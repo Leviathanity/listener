@@ -4,30 +4,34 @@ import numpy as np
 import soundfile as sf
 import librosa
 from pathlib import Path
+from app.config import VAD_TARGET_SAMPLE_RATE
 
 
 def load_audio(file_path: str) -> np.ndarray:
     try:
-        wav_data, _ = librosa.load(file_path, sr=16000, mono=True)
+        wav_data, _ = librosa.load(file_path, sr=VAD_TARGET_SAMPLE_RATE, mono=True)
         return wav_data
-    except Exception:
-        pass
+    except Exception as e:
+        librosa_error = str(e)
 
     cmd = [
         "ffmpeg", "-i", file_path,
-        "-ar", "16000", "-ac", "1",
+        "-ar", str(VAD_TARGET_SAMPLE_RATE), "-ac", "1",
         "-c:a", "pcm_s16le", "-f", "wav", "-"
     ]
     proc = subprocess.run(cmd, capture_output=True)
     if proc.returncode != 0:
-        raise RuntimeError(f"ffmpeg error: {proc.stderr.decode('utf-8', errors='ignore')}")
+        raise RuntimeError(
+            f"Failed to load audio. librosa error: {librosa_error}. "
+            f"ffmpeg error: {proc.stderr.decode('utf-8', errors='ignore')}"
+        )
     data, _ = sf.read(io.BytesIO(proc.stdout), dtype="float32")
     return data
 
 
 def save_wav(wav: np.ndarray, file_path: str):
     Path(file_path).parent.mkdir(parents=True, exist_ok=True)
-    sf.write(file_path, wav, 16000, subtype="PCM_16")
+    sf.write(file_path, wav, VAD_TARGET_SAMPLE_RATE, subtype="PCM_16")
 
 
 def chunk_audio(wav: np.ndarray, sample_rate: int, timestamps: list[tuple[float, float]],

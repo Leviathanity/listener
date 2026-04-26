@@ -2,7 +2,6 @@ import numpy as np
 import soundfile as sf
 from pathlib import Path
 from app.audio_utils import load_audio, save_wav, chunk_audio
-from app.config import VAD_TARGET_SAMPLE_RATE
 
 
 def create_test_wav(path, duration=1.0, sr=16000):
@@ -55,3 +54,11 @@ def test_chunk_audio_short_audio():
     assert len(chunks) == 1
     assert chunks[0][0] == 0.0
     assert chunks[0][1] == 0.5
+
+
+def test_chunk_audio_empty_timestamps():
+    wav = np.zeros(16000, dtype=np.float32)
+    chunks = chunk_audio(wav, 16000, [], target_duration_s=120, max_duration_s=180)
+    assert len(chunks) == 1
+    assert chunks[0][0] == 0.0
+    assert chunks[0][1] == 1.0
