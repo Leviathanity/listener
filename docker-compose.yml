@@ -1,0 +1,15 @@
+services:
+  listener:
+    build: .
+    container_name: listener
+    ports:
+      - "8000:8000"
+    environment:
+      - ASR_BASE_URL=http://192.168.2.118:8080
+      - VAD_MODEL_DIR=/models/FireRedVAD/VAD
+    volumes:
+      - ./data:/opt/listener/data
+      - ./pretrained_models:/models
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

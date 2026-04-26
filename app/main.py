@@ -1,4 +1,5 @@
 import os
+import json
 import uuid
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -142,7 +143,11 @@ async def get_task_result(task_id: str):
             content={"task_id": task_id, "status": "failed", "error": task.get("error_message")},
         )
 
-    import json
     with open(task["result_path"], "r", encoding="utf-8") as f:
         result = json.load(f)
     return result
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
