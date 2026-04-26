@@ -66,11 +66,8 @@ class AsrClient:
                         delay = 2 * (2 ** attempt)
                         await asyncio.sleep(delay)
                     else:
-                        raise Exception(f"ASR error {resp.status_code}: {resp.text}")
-                except httpx.ReadTimeout:
-                    delay = 2 * (2 ** attempt)
-                    await asyncio.sleep(delay)
-                except Exception:
+                        resp.raise_for_status()
+                except (httpx.ReadTimeout, httpx.ConnectError, httpx.RemoteProtocolError):
                     if attempt >= self.max_retries - 1:
                         raise
                     delay = 2 * (2 ** attempt)
