@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+tests/
+.git/
+venv/
+env/
+pretrained_models/
+data/uploads/*
+data/chunks/*
+data/results/*
+docs/
+Qwen3-ASR-Toolkit/
