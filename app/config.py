@@ -7,7 +7,7 @@ BASE_DIR = Path(os.environ.get("LISTENER_BASE_DIR", Path(__file__).resolve().par
 
 ASR_BASE_URL = os.environ.get("ASR_BASE_URL", "http://192.168.2.118:8080")
 ASR_MODEL = os.environ.get("ASR_MODEL", "asr")
-ASR_MAX_CONCURRENT = int(os.environ.get("ASR_MAX_CONCURRENT", "4"))
+ASR_MAX_CONCURRENT = int(os.environ.get("ASR_MAX_CONCURRENT", "1"))
 ASR_MAX_RETRIES = int(os.environ.get("ASR_MAX_RETRIES", "5"))
 
 VAD_MODEL_DIR = os.environ.get("VAD_MODEL_DIR", str(BASE_DIR / "pretrained_models" / "FireRedVAD" / "VAD"))
