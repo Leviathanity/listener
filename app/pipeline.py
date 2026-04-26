@@ -75,15 +75,14 @@ async def process_task(task_id, file_path, tracker, vad_segmenter, asr_client, c
         total = len(results_list)
 
         segments = []
-        texts = []
+        transcribed_texts = []
         failed_count = 0
         for i, (idx, start_s, end_s, text, error) in enumerate(results_list):
             if error:
                 failed_count += 1
-                texts.append(f"[Segment {idx} failed: {error}]")
             else:
                 cleaned = clean_text(text)
-                texts.append(cleaned)
+                transcribed_texts.append(cleaned)
                 segments.append({
                     "start": round(start_s, 2),
                     "end": round(end_s, 2),
@@ -93,7 +92,7 @@ async def process_task(task_id, file_path, tracker, vad_segmenter, asr_client, c
             await tracker.update(task_id, progress=progress,
                                  progress_detail=f"Transcribing segment {i + 1}/{total}")
 
-        full_text = "".join(t for t in texts if t)
+        full_text = "".join(transcribed_texts)
         status = "completed" if failed_count < total else "failed"
 
         result = {
