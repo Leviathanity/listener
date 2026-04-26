@@ -1,5 +1,6 @@
 import uuid
 import pytest
+import pytest_asyncio
 import asyncio
 import os
 from pathlib import Path
@@ -11,7 +12,7 @@ def db_path(tmp_path):
     return str(tmp_path / "test_tasks.db")
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def tracker(db_path):
     t = TaskTracker(db_path)
     await t.init()

@@ -1,5 +1,5 @@
 import aiosqlite
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 SCHEMA = """
@@ -20,11 +20,11 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 class TaskTracker:
     def __init__(self, db_path: str):
-        self.db_path = db_path
+        self._db_path = db_path
         self._conn = None
 
     async def init(self):
-        self._conn = await aiosqlite.connect(self.db_path)
+        self._conn = await aiosqlite.connect(self._db_path)
         self._conn.row_factory = aiosqlite.Row
         await self._conn.executescript(SCHEMA)
         await self._conn.commit()
@@ -33,8 +33,16 @@ class TaskTracker:
         if self._conn:
             await self._conn.close()
 
+    async def __aenter__(self):
+        await self.init()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
+        return False
+
     async def create(self, task_id: str, filename: str, file_path: str):
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         await self._conn.execute(
             "INSERT INTO tasks (id, filename, file_path, status, created_at, updated_at) VALUES (?, ?, ?, 'pending', ?, ?)",
             (task_id, filename, file_path, now, now),
@@ -50,12 +58,15 @@ class TaskTracker:
 
     async def update(self, task_id: str, **kwargs):
         allowed = {"status", "progress", "progress_detail", "result_path", "error_message"}
-        updates = {k: v for k, v in kwargs.items() if k in allowed}
-        if not updates:
+        unknown = set(kwargs) - allowed
+        if unknown:
+            raise ValueError(f"Unknown fields: {unknown}")
+        if not kwargs:
             return
-        updates["updated_at"] = datetime.utcnow().isoformat()
-        set_clause = ", ".join(f"{k} = ?" for k in updates)
-        values = list(updates.values()) + [task_id]
+        kwargs = dict(kwargs)
+        kwargs["updated_at"] = datetime.now(timezone.utc).isoformat()
+        set_clause = ", ".join(f"{k} = ?" for k in kwargs)
+        values = list(kwargs.values()) + [task_id]
         await self._conn.execute(f"UPDATE tasks SET {set_clause} WHERE id = ?", values)
         await self._conn.commit()
 
