@@ -8,6 +8,7 @@ from app.config import VAD_TARGET_SAMPLE_RATE, VAD_SEGMENT_THRESHOLD_S, VAD_MAX_
 
 
 async def process_task(task_id, file_path, tracker, vad_segmenter, asr_client, chunk_dir, result_dir):
+    wav_chunk_path = None
     try:
         await tracker.update(task_id, status="processing", progress_detail="Loading audio...")
 
@@ -115,3 +116,5 @@ async def process_task(task_id, file_path, tracker, vad_segmenter, asr_client, c
 
     except Exception as e:
         await tracker.update(task_id, status="failed", error_message=str(e))
+        if wav_chunk_path and Path(wav_chunk_path).exists():
+            shutil.rmtree(wav_chunk_path, ignore_errors=True)
