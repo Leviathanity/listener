@@ -4,6 +4,8 @@ RUN sed -i "s@http://deb.debian.org@https://mirrors.aliyun.com@g" /etc/apt/sourc
     sed -i "s@http://deb.debian.org@https://mirrors.aliyun.com@g" /etc/apt/sources.list 2>/dev/null; \
     apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    gcc \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/listener
