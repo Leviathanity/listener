@@ -32,7 +32,7 @@ class AsrClient:
                     "role": "user",
                     "content": [
                         {"type": "text", "text": "Please transcribe this audio."},
-                        {"type": "input_audio", "input_audio": {"data": audio_b64, "format": "wav"}}
+                        {"type": "audio_url", "audio_url": {"url": f"data:audio/wav;base64,{audio_b64}"}}
                     ]
                 }
             ]

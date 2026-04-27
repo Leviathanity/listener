@@ -35,8 +35,8 @@ def test_build_payload(asr_client, tmp_path):
     assert payload["messages"][0]["role"] == "user"
     assert len(payload["messages"][0]["content"]) == 2
     assert payload["messages"][0]["content"][0]["type"] == "text"
-    assert payload["messages"][0]["content"][1]["type"] == "input_audio"
-    assert payload["messages"][0]["content"][1]["input_audio"]["format"] == "wav"
+    assert payload["messages"][0]["content"][1]["type"] == "audio_url"
+    assert "base64" in payload["messages"][0]["content"][1]["audio_url"]["url"]
 
 
 def test_parse_response():
