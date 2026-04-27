@@ -5,8 +5,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - ASR_BASE_URL=http://192.168.2.118:8080
+      - ASR_BASE_URL=http://host.docker.internal:8001
+      - ASR_MODEL=Qwen3-ASR
       - VAD_MODEL_DIR=/models/FireRedVAD/VAD
+      - ASR_MAX_CONCURRENT=1
     volumes:
       - ./data:/opt/listener/data
       - ./pretrained_models:/models

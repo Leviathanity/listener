@@ -5,8 +5,8 @@ from pathlib import Path
 
 BASE_DIR = Path(os.environ.get("LISTENER_BASE_DIR", Path(__file__).resolve().parent.parent))
 
-ASR_BASE_URL = os.environ.get("ASR_BASE_URL", "http://192.168.2.118:8080")
-ASR_MODEL = os.environ.get("ASR_MODEL", "asr")
+ASR_BASE_URL = os.environ.get("ASR_BASE_URL", "http://host.docker.internal:8001")
+ASR_MODEL = os.environ.get("ASR_MODEL", "Qwen3-ASR")
 ASR_MAX_CONCURRENT = int(os.environ.get("ASR_MAX_CONCURRENT", "1"))
 ASR_MAX_RETRIES = int(os.environ.get("ASR_MAX_RETRIES", "5"))
 
