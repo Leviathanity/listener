@@ -38,16 +38,22 @@ class AsrClient:
             ]
         }
 
+    @staticmethod
+    def _read_file(wav_path: str) -> str:
+        with open(wav_path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+
     def _parse_response(self, content: str) -> str:
         # Strip "language LANG<asr_text>" prefix
         content = re.sub(r'^language\s+\w*<asr_text>\s*', '', content)
         # Remove any closing tag
         content = content.replace('</asr_text>', '')
+        content = re.sub(r'<\|[^|]+\|>', '', content)
         return content.strip()
 
     async def transcribe(self, wav_path: str) -> str:
-        with open(wav_path, "rb") as f:
-            audio_b64 = base64.b64encode(f.read()).decode("utf-8")
+        loop = asyncio.get_running_loop()
+        audio_b64 = await loop.run_in_executor(None, self._read_file, wav_path)
 
         payload = self._build_payload(audio_b64)
 

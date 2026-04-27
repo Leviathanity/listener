@@ -52,6 +52,13 @@ def test_parse_response():
     assert text3 == ""
 
 
+def test_parse_response_strips_special_tokens():
+    client = AsrClient()
+    result = client._parse_response("language zh<asr_text>Hello <|audio_eos|> world</asr_text>")
+    assert "<|audio_eos|>" not in result
+    assert "Hello  world" in result
+
+
 @pytest.mark.asyncio
 async def test_transcribe_segment_integration(asr_client, tmp_path):
     """Integration test — requires running ASR server."""

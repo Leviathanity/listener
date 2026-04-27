@@ -149,6 +149,18 @@ async def process_task(task_id, file_path, tracker, vad_segmenter, asr_client, c
         full_text = "".join(transcribed_texts)
         status = "completed" if failed_count < total else "failed"
 
+        low_density_segments = []
+        for seg in segments:
+            dur = seg["end"] - seg["start"]
+            chars = len(seg["text"])
+            density = chars / dur if dur > 0 else 0
+            if density < 1.0:
+                low_density_segments.append({
+                    "start": seg["start"],
+                    "end": seg["end"],
+                    "density": round(density, 1),
+                })
+
         result = {
             "task_id": task_id,
             "status": status,
@@ -157,6 +169,8 @@ async def process_task(task_id, file_path, tracker, vad_segmenter, asr_client, c
         }
         if failed_count > 0 and status == "completed":
             result["warning"] = f"{failed_count}/{total} segments failed and were skipped"
+        if low_density_segments:
+            result["low_quality_segments"] = low_density_segments
 
         result_path = str(Path(result_dir) / f"{task_id}.json")
         Path(result_path).parent.mkdir(parents=True, exist_ok=True)
