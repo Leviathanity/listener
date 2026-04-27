@@ -27,12 +27,12 @@ async def test_process_task_completes_with_mocks(tmp_path):
     await tracker.create(task_id, "test.wav", upload_path)
 
     vad_segmenter = MagicMock()
-    vad_segmenter.detect.return_value = [(0.0, 1.0), (1.0, 2.0)]
+    vad_segmenter.detect.return_value = [(0.0, 5.0), (7.0, 12.0)]
 
     asr_client = AsyncMock()
     asr_client.transcribe.return_value = "\u6d4b\u8bd5\u6587\u672c"
 
-    with patch("app.pipeline.load_audio", return_value=np.zeros(32000, dtype=np.float32)):
+    with patch("app.pipeline.load_audio", return_value=np.zeros(192000, dtype=np.float32)):
         with patch("app.pipeline.clean_text", return_value="\u6d4b\u8bd5\u6587\u672c"):
             with patch("app.pipeline.save_wav"):
                 await process_task(

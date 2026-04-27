@@ -15,7 +15,7 @@ def clean_text(text: str, threshold: int = 20) -> str:
                 i += count
         return ''.join(res)
 
-    def fix_pattern_repeats(s, thresh, max_len=20):
+    def fix_pattern_repeats(s, thresh, max_len=100):
         n = len(s)
         min_len = thresh * 2
         if n < min_len:

@@ -26,3 +26,9 @@ def test_clean_text_handles_empty():
 
 def test_clean_text_handles_short_text():
     assert clean_text("你好") == "你好"
+
+
+def test_clean_text_removes_long_pattern_repeats():
+    text = "在这里的话，我在这里有没有什么危险？没有吧？" * 25
+    result = clean_text(text)
+    assert len(result) < len(text)

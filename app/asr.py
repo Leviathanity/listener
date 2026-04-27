@@ -39,10 +39,11 @@ class AsrClient:
         }
 
     def _parse_response(self, content: str) -> str:
-        match = re.search(r"<asr_text>(.*?)</asr_text>", content, re.DOTALL)
-        if match:
-            return match.group(1)
-        return content
+        # Strip "language LANG<asr_text>" prefix
+        content = re.sub(r'^language\s+\w*<asr_text>\s*', '', content)
+        # Remove any closing tag
+        content = content.replace('</asr_text>', '')
+        return content.strip()
 
     async def transcribe(self, wav_path: str) -> str:
         with open(wav_path, "rb") as f:

@@ -2,7 +2,7 @@ import json
 import shutil
 import asyncio
 from pathlib import Path
-from app.audio_utils import load_audio, save_wav, chunk_audio
+from app.audio_utils import load_audio, save_wav
 from app.postprocess import clean_text
 from app.config import VAD_TARGET_SAMPLE_RATE, VAD_SEGMENT_THRESHOLD_S, VAD_MAX_SEGMENT_THRESHOLD_S
 
@@ -39,24 +39,78 @@ async def process_task(task_id, file_path, tracker, vad_segmenter, asr_client, c
             shutil.rmtree(wav_chunk_path, ignore_errors=True)
             return
 
-        if total_duration > VAD_MAX_SEGMENT_THRESHOLD_S:
-            chunks = chunk_audio(wav, VAD_TARGET_SAMPLE_RATE, timestamps,
-                                 target_duration_s=VAD_SEGMENT_THRESHOLD_S,
-                                 max_duration_s=VAD_MAX_SEGMENT_THRESHOLD_S)
-        else:
-            sr = VAD_TARGET_SAMPLE_RATE
-            chunks = []
-            for t_start, t_end in timestamps:
-                start_sample = int(t_start * sr)
-                end_sample = int(t_end * sr)
-                chunk_data = wav[start_sample:end_sample]
-                chunks.append((t_start, t_end, chunk_data))
+        # Build chunks from VAD segments directly
+        sr = VAD_TARGET_SAMPLE_RATE
+        max_samples = VAD_MAX_SEGMENT_THRESHOLD_S * sr
+        min_segment_duration = 5.0  # merge segments shorter than 5s
+
+        chunks = []
+        pending_start = None
+        pending_end = None
+
+        for t_start, t_end in timestamps:
+            if pending_start is None:
+                pending_start = t_start
+                pending_end = t_end
+            elif t_start - pending_end < 1.0 and (pending_end - pending_start) < 120:
+                # Extend current pending segment (gap < 1s)
+                pending_end = t_end
+            else:
+                # Flush pending segment
+                seg_dur = pending_end - pending_start
+                if seg_dur <= VAD_MAX_SEGMENT_THRESHOLD_S:
+                    chunks.append((pending_start, pending_end, seg_dur))
+                else:
+                    # Split long segment
+                    n_parts = int(seg_dur // VAD_SEGMENT_THRESHOLD_S) + 1
+                    part_dur = seg_dur / n_parts
+                    for j in range(n_parts):
+                        cs = pending_start + j * part_dur
+                        ce = pending_start + (j + 1) * part_dur if j < n_parts - 1 else pending_end
+                        chunks.append((cs, ce, ce - cs))
+                pending_start = t_start
+                pending_end = t_end
+
+        # Flush last segment
+        if pending_start is not None:
+            seg_dur = pending_end - pending_start
+            if seg_dur <= VAD_MAX_SEGMENT_THRESHOLD_S:
+                chunks.append((pending_start, pending_end, seg_dur))
+            else:
+                n_parts = int(seg_dur // VAD_SEGMENT_THRESHOLD_S) + 1
+                part_dur = seg_dur / n_parts
+                for j in range(n_parts):
+                    cs = pending_start + j * part_dur
+                    ce = pending_start + (j + 1) * part_dur if j < n_parts - 1 else pending_end
+                    chunks.append((cs, ce, ce - cs))
+
+        # Merge very short chunks with neighbors
+        merged = []
+        i = 0
+        while i < len(chunks):
+            cs, ce, cd = chunks[i]
+            if cd < min_segment_duration and merged:
+                prev = merged.pop()
+                merged.append((prev[0], ce, ce - prev[0]))
+            elif cd < min_segment_duration and i + 1 < len(chunks):
+                nxt = chunks[i + 1]
+                chunks[i + 1] = (cs, nxt[1], nxt[1] - cs)
+            else:
+                merged.append((cs, ce, cd))
+            i += 1
+
+        # Extract actual audio for each chunk
+        final_chunks = []
+        for cs, ce, _ in merged:
+            start_sample = int(cs * sr)
+            end_sample = int(ce * sr)
+            final_chunks.append((cs, ce, wav[start_sample:end_sample]))
 
         await tracker.update(task_id, progress=0.1,
-                             progress_detail=f"Transcribing {len(chunks)} segments...")
+                             progress_detail=f"Transcribing {len(final_chunks)} segments...")
 
         chunk_paths = []
-        for idx, (start_s, end_s, chunk_data) in enumerate(chunks):
+        for idx, (start_s, end_s, chunk_data) in enumerate(final_chunks):
             chunk_path = str(wav_chunk_path / f"chunk_{idx:04d}.wav")
             save_wav(chunk_data, chunk_path)
             chunk_paths.append((idx, start_s, end_s, chunk_path))
