@@ -52,7 +52,7 @@ async def process_task(task_id, file_path, tracker, vad_segmenter, asr_client, c
             if pending_start is None:
                 pending_start = t_start
                 pending_end = t_end
-            elif t_start - pending_end < 1.0 and (pending_end - pending_start) < 120:
+            elif t_start - pending_end < 1.0 and (pending_end - pending_start) < 60:
                 # Extend current pending segment (gap < 1s)
                 pending_end = t_end
             else:
@@ -122,16 +122,14 @@ async def process_task(task_id, file_path, tracker, vad_segmenter, asr_client, c
             except Exception as e:
                 return (idx, start_s, end_s, "", str(e))
 
-        tasks = [transcribe_one(idx, s, e, p) for idx, s, e, p in chunk_paths]
-        results_list = await asyncio.gather(*tasks)
-
-        results_list.sort(key=lambda x: x[0])
-        total = len(results_list)
-
+        total = len(chunk_paths)
         segments = []
         transcribed_texts = []
         failed_count = 0
-        for i, (idx, start_s, end_s, text, error) in enumerate(results_list):
+
+        coros = [transcribe_one(idx, s, e, p) for idx, s, e, p in chunk_paths]
+        for completed_idx, coro in enumerate(asyncio.as_completed(coros), 1):
+            idx, start_s, end_s, text, error = await coro
             if error:
                 failed_count += 1
             else:
@@ -142,9 +140,11 @@ async def process_task(task_id, file_path, tracker, vad_segmenter, asr_client, c
                     "end": round(end_s, 2),
                     "text": cleaned,
                 })
-            progress = 0.1 + 0.85 * (i + 1) / total
+            progress = 0.1 + 0.85 * completed_idx / total
             await tracker.update(task_id, progress=progress,
-                                 progress_detail=f"Transcribing segment {i + 1}/{total}")
+                                 progress_detail=f"Transcribing segment {completed_idx}/{total}")
+
+        segments.sort(key=lambda x: x["start"])
 
         full_text = "".join(transcribed_texts)
         status = "completed" if failed_count < total else "failed"

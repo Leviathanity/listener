@@ -11,8 +11,8 @@ ASR_MAX_CONCURRENT = int(os.environ.get("ASR_MAX_CONCURRENT", "1"))
 ASR_MAX_RETRIES = int(os.environ.get("ASR_MAX_RETRIES", "5"))
 
 VAD_MODEL_DIR = os.environ.get("VAD_MODEL_DIR", str(BASE_DIR / "pretrained_models" / "FireRedVAD" / "VAD"))
-VAD_SEGMENT_THRESHOLD_S = int(os.environ.get("VAD_SEGMENT_THRESHOLD_S", "120"))
-VAD_MAX_SEGMENT_THRESHOLD_S = int(os.environ.get("VAD_MAX_SEGMENT_THRESHOLD_S", "180"))
+VAD_SEGMENT_THRESHOLD_S = int(os.environ.get("VAD_SEGMENT_THRESHOLD_S", "60"))
+VAD_MAX_SEGMENT_THRESHOLD_S = int(os.environ.get("VAD_MAX_SEGMENT_THRESHOLD_S", "60"))
 VAD_TARGET_SAMPLE_RATE = 16000
 
 VAD_SMOOTH_WINDOW_SIZE = 5
