@@ -13,3 +13,11 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - listener_net
+
+networks:
+  listener_net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1420
