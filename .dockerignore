@@ -8,5 +8,4 @@ pretrained_models/
 data/uploads/*
 data/chunks/*
 data/results/*
-docs/
 Qwen3-ASR-Toolkit/
