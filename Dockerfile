@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trus
     -r requirements.txt
 
 COPY app/ ./app/
+COPY docs/ ./docs/
 COPY data/ ./data/
 
 RUN mkdir -p data/uploads data/chunks data/results

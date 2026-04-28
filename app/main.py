@@ -1,10 +1,11 @@
 import os
 import json
 import uuid
+import asyncio
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 
 from app.config import (
     DB_PATH, UPLOAD_DIR, CHUNK_DIR, RESULT_DIR,
@@ -50,6 +51,19 @@ async def lifespan(application: FastAPI):
 
 
 app = FastAPI(title="Listener ASR Service", version="1.0.0", lifespan=lifespan)
+
+_docs_dir = Path(__file__).resolve().parent.parent / "docs"
+
+
+@app.get("/docs/openapi.md")
+async def openapi_doc():
+    openapi_path = _docs_dir / "openapi.md"
+    if not openapi_path.exists():
+        raise HTTPException(404, "openapi.md not found")
+    return HTMLResponse(
+        content=openapi_path.read_text(encoding="utf-8"),
+        media_type="text/markdown; charset=utf-8",
+    )
 
 
 async def _ensure_tracker():
@@ -102,8 +116,7 @@ async def create_task(background_tasks: BackgroundTasks, file: UploadFile = File
     await _tracker.create(task_id, file.filename, save_path)
 
     if not _test_mode:
-        background_tasks.add_task(
-            process_task,
+        asyncio.create_task(process_task(
             task_id=task_id,
             file_path=save_path,
             tracker=_tracker,
@@ -111,7 +124,7 @@ async def create_task(background_tasks: BackgroundTasks, file: UploadFile = File
             asr_client=_asr_client,
             chunk_dir=str(_data_dir("chunks")),
             result_dir=str(_data_dir("results")),
-        )
+        ))
 
     return {"task_id": task_id, "status": "pending"}
 
