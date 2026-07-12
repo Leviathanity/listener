@@ -160,6 +160,56 @@ http://localhost:8000
 
 ---
 
+### WS /v1/ws/transcribe
+
+WebSocket 实时流式转录。支持连接复用（单连接多会话）。
+
+**协议**
+
+| 方向 | 消息类型 | 说明 |
+|------|----------|------|
+| Client → Server | `{"type":"transcribe.create","session_id":"...","sample_rate":16000}` | 创建转录会话 |
+| Client → Server | **二进制帧** | 原始 PCM 音频（16kHz，16-bit，signed，mono） |
+| Client → Server | `{"type":"transcribe.end","session_id":"..."}` | 结束会话，触发转录 |
+| Client → Server | `{"type":"transcribe.cancel","session_id":"..."}` | 取消并清理会话 |
+| Server → Client | `{"type":"transcribe.created","session_id":"..."}` | 会话已创建 |
+| Server → Client | `{"type":"transcript.completed","session_id":"...","text":"..."}` | 转录完成结果 |
+| Server → Client | `{"type":"error","session_id":"...","msg":"..."}` | 错误信息 |
+
+**连接复用**
+
+可在同一 WebSocket 连接上创建多个 `session_id` 不同的会话，依次发送音频和结束，无需重新连接。
+
+**限制**
+
+- 采样率仅支持 16000 Hz
+- 音频格式为 16-bit signed PCM mono
+- 每次会话在 `transcribe.end` 时一次性转录全部缓冲区
+
+**使用示例**
+
+```python
+import asyncio
+import json
+import websockets
+
+async def transcribe(audio_pcm: bytes):
+    async with websockets.connect("ws://localhost:8000/v1/ws/transcribe") as ws:
+        # 创建会话
+        await ws.send(json.dumps({"type": "transcribe.create", "session_id": "s1"}))
+        await ws.recv()  # transcribe.created
+
+        # 发送音频
+        await ws.send(audio_pcm)
+
+        # 结束会话
+        await ws.send(json.dumps({"type": "transcribe.end", "session_id": "s1"}))
+        result = json.loads(await ws.recv())
+        return result["text"]
+```
+
+---
+
 ## 处理流程
 
 ```
