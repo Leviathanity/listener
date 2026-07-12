@@ -4,6 +4,7 @@ import uuid
 import asyncio
 from pathlib import Path
 from contextlib import asynccontextmanager
+from starlette.websockets import WebSocketDisconnect
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, WebSocket
 from fastapi.responses import JSONResponse, HTMLResponse
 
@@ -176,7 +177,7 @@ async def ws_transcribe(websocket: WebSocket):
         while True:
             try:
                 msg = await websocket.receive()
-            except Exception:
+            except WebSocketDisconnect:
                 break
 
             if msg.get("type") == "websocket.disconnect":
@@ -208,19 +209,28 @@ async def ws_transcribe(websocket: WebSocket):
                 await websocket.send_json({"type": "transcribe.created", "session_id": sid})
 
             elif msg_type == "transcribe.end":
-                text = await manager.end_session(sid)
-                await websocket.send_json({
-                    "type": "transcript.completed",
-                    "session_id": sid,
-                    "text": text or "",
-                })
+                try:
+                    text = await manager.end_session(sid)
+                    await websocket.send_json({
+                        "type": "transcript.completed",
+                        "session_id": sid,
+                        "text": text or "",
+                    })
+                except Exception:
+                    try:
+                        await websocket.send_json({
+                            "type": "error", "session_id": sid, "msg": "Transcription failed",
+                        })
+                    except Exception:
+                        break
 
             elif msg_type == "transcribe.cancel":
                 manager.cancel_session(sid)
 
+    except WebSocketDisconnect:
+        pass
     finally:
         manager.close_all()
-        await websocket.close()
 
 
 @app.get("/health")
