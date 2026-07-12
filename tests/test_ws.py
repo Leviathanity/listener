@@ -55,8 +55,8 @@ async def test_session_manager_lifecycle(tmp_path):
     mgr.close_all()
 
 
-def test_session_buffer_trimming(tmp_path):
-    """Buffer trims after transcribe."""
+def test_session_buffer_cleared_after_transcribe(tmp_path):
+    """Buffer is cleared after transcribe completes."""
     sess = Session("test-3", str(tmp_path), 16000)
     sess.feed(b"\x00\x00" * 48000)
     assert abs(sess.buffer_seconds() - 3.0) < 0.01
@@ -70,7 +70,7 @@ def test_session_buffer_trimming(tmp_path):
     asyncio.run(sess.transcribe(vad, asr))
 
     remaining = sess.buffer_seconds()
-    assert 1.5 < remaining < 2.5, f"Expected ~2s, got {remaining}"
+    assert remaining == 0.0, f"Expected 0.0s, got {remaining}"
 
 
 def test_ws_test_mode_returns_error(tmp_path):
