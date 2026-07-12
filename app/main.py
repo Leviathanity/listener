@@ -4,7 +4,7 @@ import uuid
 import asyncio
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, WebSocket
 from fastapi.responses import JSONResponse, HTMLResponse
 
 from app.config import (
@@ -159,6 +159,68 @@ async def get_task_result(task_id: str):
     with open(task["result_path"], "r", encoding="utf-8") as f:
         result = json.load(f)
     return result
+
+
+@app.websocket("/v1/ws/transcribe")
+async def ws_transcribe(websocket: WebSocket):
+    await websocket.accept()
+    if _test_mode:
+        await websocket.send_json({"type": "error", "msg": "Test mode"})
+        await websocket.close()
+        return
+
+    from app.ws import SessionManager
+    manager = SessionManager(_vad_segmenter, _asr_client, str(_data_dir("chunks")))
+
+    try:
+        while True:
+            try:
+                msg = await websocket.receive()
+            except Exception:
+                break
+
+            if msg.get("type") == "websocket.disconnect":
+                break
+
+            if "bytes" in msg:
+                active = [s for s in manager.sessions.values() if s.active]
+                if active:
+                    active[-1].feed(msg["bytes"])
+                continue
+
+            if "text" not in msg:
+                continue
+
+            try:
+                data = json.loads(msg["text"])
+            except json.JSONDecodeError:
+                continue
+
+            msg_type = data.get("type")
+            sid = data.get("session_id", "")
+
+            if msg_type == "transcribe.create":
+                sr = data.get("sample_rate", 16000)
+                if sr != 16000:
+                    await websocket.send_json({"type": "error", "session_id": sid, "msg": "Only 16000 Hz"})
+                    continue
+                manager.create_session(sid, sr)
+                await websocket.send_json({"type": "transcribe.created", "session_id": sid})
+
+            elif msg_type == "transcribe.end":
+                text = await manager.end_session(sid)
+                await websocket.send_json({
+                    "type": "transcript.completed",
+                    "session_id": sid,
+                    "text": text or "",
+                })
+
+            elif msg_type == "transcribe.cancel":
+                manager.cancel_session(sid)
+
+    finally:
+        manager.close_all()
+        await websocket.close()
 
 
 @app.get("/health")
